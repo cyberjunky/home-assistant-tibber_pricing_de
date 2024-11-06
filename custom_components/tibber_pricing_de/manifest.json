@@ -1,0 +1,12 @@
+{
+    "domain": "tibber_pricing_de",
+    "name": "Tibber Pricing DE",
+    "version": "1.0.0",
+    "documentation": "https://github.com/cyberjunky/home-assistant-tibber_pricing_de",
+    "issue_tracker": "https://github.com/cyberjunky/home-assistant-tibber_pricing_de/issues",
+    "requirements": [],
+    "dependencies": [],
+    "codeowners": [
+        "@cyberjunky"
+    ]
+}
