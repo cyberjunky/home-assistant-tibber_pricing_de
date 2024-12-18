@@ -1,0 +1,4 @@
+-r requirements.txt
+pre-commit==4.0.1
+vulture==2.14
+codespell

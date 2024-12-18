@@ -8,38 +8,33 @@ sensor:
         name: Hartmanssdorf
         postalcode: 07586
 """
+import asyncio
 import logging
-from datetime import timedelta
-from datetime import datetime
-import pytz
-import voluptuous as vol
+from datetime import datetime, timedelta
 from typing import Final
 
 import aiohttp
-import asyncio
 import async_timeout
-
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import pytz
+import voluptuous as vol
 from homeassistant.components.sensor import (
     PLATFORM_SCHEMA,
-    SensorEntity,
-    SensorEntityDescription,
     SensorDeviceClass,
+    SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import (
-    CONF_NAME, CONF_SCAN_INTERVAL, CONF_RESOURCES
-    )
+from homeassistant.const import CONF_NAME
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 
-TIBBER_API_URL = 'https://tibber.com/de/api/lookup/price-overview?postalCode={0}'
+TIBBER_API_URL = "https://tibber.com/de/api/lookup/price-overview?postalCode={0}"
 _LOGGER = logging.getLogger(__name__)
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(hours=1)
 
-SENSOR_PREFIX = 'Tibber Pricing'
+SENSOR_PREFIX = "Tibber Pricing"
 CONST_POSTALCODE = "postalcode"
 
 # https://github.com/JaccoR/hass-entso-e/blob/main/custom_components/entsoe/sensor.py
@@ -67,32 +62,34 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription, ...]] = (
         key="highest_price_today_hour",
         name="Highest Price Today Hour",
         icon="mdi:calendar-clock-outline",
-        state_class=SensorDeviceClass.TIMESTAMP
+        state_class=SensorDeviceClass.TIMESTAMP,
     ),
     SensorEntityDescription(
         key="lowest_price_today",
         name="Lowest Price Today",
         icon="mdi:gauge-empty",
-        state_class=SensorStateClass.MEASUREMENT
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="lowest_price_today_hour",
         name="Lowest Price Today Hour",
         icon="mdi:calendar-clock-outline",
-        state_class=SensorDeviceClass.TIMESTAMP
-    )
+        state_class=SensorDeviceClass.TIMESTAMP,
+    ),
 )
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Optional(CONF_NAME, default=SENSOR_PREFIX): cv.string,
-    vol.Required(CONST_POSTALCODE): cv.string,
-})
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+    {
+        vol.Optional(CONF_NAME, default=SENSOR_PREFIX): cv.string,
+        vol.Required(CONST_POSTALCODE): cv.string,
+    }
+)
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Setup the Tibber Pricing sensors."""
 
-    scan_interval = config.get(CONF_SCAN_INTERVAL)
+    # scan_interval = config.get(CONF_SCAN_INTERVAL)
     postalcode = config.get(CONST_POSTALCODE)
     default_name = config.get(CONF_NAME)
 
@@ -114,7 +111,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 # pylint: disable=abstract-method
-class TibberData(object):
+class TibberData:
     """Handle Tibber data object and limit updates."""
 
     def __init__(self, session, postalcode):
@@ -141,19 +138,20 @@ class TibberData(object):
             url = TIBBER_API_URL.format(self._postalcode)
             with async_timeout.timeout(5):
                 response = await self._session.get(url)
-            _LOGGER.debug(
-                "Response status from the Tibber API: %s", response.status
-            )
+            _LOGGER.debug("Response status from the Tibber API: %s", response.status)
         except aiohttp.ClientError:
             _LOGGER.error("Cannot connect to the Tibber API")
             self._data = None
             return
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout occured while trying to connect to the Tibber API")
+            _LOGGER.error("Timeout occurred while trying to connect to the Tibber API")
             self._data = None
             return
         except Exception as err:
-            _LOGGER.error("Unknown error occured while downloading data from the Tibber API: %s", err)
+            _LOGGER.error(
+                "Unknown error occurred while downloading data from the Tibber API: %s",
+                err,
+            )
             self._data = None
             return
 
@@ -167,25 +165,32 @@ class TibberData(object):
 
         """Parse the Tibber API data."""
         try:
-            for pricing in json_data['energy']['todayHours']:
-                    _LOGGER.debug("todayHours hour: %s date: %s priceIncludingVat: %s priceComponents: %s", pricing['hour'], pricing['date'], pricing['priceIncludingVat'], pricing['priceComponents'])
-                    price = {}
-                    # Ensure the hour is always two digits
-                    formatted_hour = str(pricing['hour']).zfill(2)
-                    price['timestamp'] = f"{pricing['date']} {formatted_hour}:00:00+02:00"
-                    price['price'] = pricing['priceIncludingVat']
-                    price['priceComponents'] = pricing['priceComponents']
-                    prices_data.append(price)
+            for pricing in json_data["energy"]["todayHours"]:
+                _LOGGER.debug(
+                    "todayHours hour: %s date: %s priceIncludingVat: %s priceComponents: %s",
+                    pricing["hour"],
+                    pricing["date"],
+                    pricing["priceIncludingVat"],
+                    pricing["priceComponents"],
+                )
+                price = {}
+                # Ensure the hour is always two digits
+                formatted_hour = str(pricing["hour"]).zfill(2)
+                price["timestamp"] = f"{pricing['date']} {formatted_hour}:00:00+02:00"
+                price["price"] = pricing["priceIncludingVat"]
+                price["priceComponents"] = pricing["priceComponents"]
+                prices_data.append(price)
 
-            pricing_data['prices'] = prices_data
-            pricing_data['monthly'] = json_data['monthlyFees']
-            pricing_data['today'] = json_data['energy']['today']
+            pricing_data["prices"] = prices_data
+            pricing_data["monthly"] = json_data["monthlyFees"]
+            pricing_data["today"] = json_data["energy"]["today"]
 
             self._data = pricing_data
         except ValueError as err:
             _LOGGER.error("Cannot parse the Tibber API data %s", err.args)
             self._data = None
             return False
+
 
 """
 prices: 
@@ -278,6 +283,7 @@ prices:
         },
 """
 
+
 class TibberSensor(Entity):
     """Representation of a Tibber Sensor."""
 
@@ -285,7 +291,7 @@ class TibberSensor(Entity):
         """Initialize the sensor."""
         self.entity_description = description
         self._data = data
-        
+
         self._default_name = default_name
         self._state = None
 
@@ -306,7 +312,9 @@ class TibberSensor(Entity):
         """Return the state attributes of this device."""
 
         # Get the local timezone
-        local_timezone = pytz.timezone('Europe/Amsterdam')  # Replace with your local timezone
+        local_timezone = pytz.timezone(
+            "Europe/Amsterdam"
+        )  # Replace with your local timezone
 
         # Get the current time with the local timezone
         now = datetime.now(local_timezone)
@@ -314,23 +322,22 @@ class TibberSensor(Entity):
 
         # Find the matching entry
         matching_entry = None
-        for pricing in self._pricing_data['prices']:
-            if pricing['timestamp'] == timestamp:
+        for pricing in self._pricing_data["prices"]:
+            if pricing["timestamp"] == timestamp:
                 matching_entry = pricing
                 break
 
         if self._type == "current_price":
             return {
-                "prices": self._pricing_data['prices'],
-                "price_components": matching_entry['priceComponents'],
-                "today": self._pricing_data['today'],
-                "monthly": self._pricing_data['monthly'],
+                "prices": self._pricing_data["prices"],
+                "price_components": matching_entry["priceComponents"],
+                "today": self._pricing_data["today"],
+                "monthly": self._pricing_data["monthly"],
             }
 
         return {
-                "price_components": matching_entry['priceComponents'],
-            }
-
+            "price_components": matching_entry["priceComponents"],
+        }
 
     async def async_update(self):
         """Get the latest data and use it to update our sensor state."""
@@ -340,9 +347,10 @@ class TibberSensor(Entity):
 
         """This hour price including taxes."""
         if self._type == "current_price":
-
             # Get the local timezone
-            local_timezone = pytz.timezone('Europe/Amsterdam')  # Replace with your local timezone
+            local_timezone = pytz.timezone(
+                "Europe/Amsterdam"
+            )  # Replace with your local timezone
 
             # Get the current time with the local timezone
             now = datetime.now(local_timezone)
@@ -351,18 +359,19 @@ class TibberSensor(Entity):
 
             # Find the matching entry
             matching_entry = None
-            for pricing in self._pricing_data['prices']:
-                if pricing['timestamp'] == timestamp:
+            for pricing in self._pricing_data["prices"]:
+                if pricing["timestamp"] == timestamp:
                     matching_entry = pricing
                     break
 
-            self._state = matching_entry['price']
+            self._state = matching_entry["price"]
 
         """Next hour price including taxes."""
         if self._type == "next_hour_price":
-
             # Get the local timezone
-            local_timezone = pytz.timezone('Europe/Amsterdam')  # Replace with your local timezone
+            local_timezone = pytz.timezone(
+                "Europe/Amsterdam"
+            )  # Replace with your local timezone
 
             # Get the current time with the local timezone
             now = datetime.now(local_timezone)
@@ -375,62 +384,59 @@ class TibberSensor(Entity):
 
             # Find the matching entry
             matching_entry = None
-            for pricing in self._pricing_data['prices']:
-                if pricing['timestamp'] == timestamp:
+            for pricing in self._pricing_data["prices"]:
+                if pricing["timestamp"] == timestamp:
                     matching_entry = pricing
                     break
 
-            self._state = matching_entry['price']
+            self._state = matching_entry["price"]
 
         """Highest price today including taxes."""
         if self._type == "highest_price_today":
-
             # Initialize variables
             highest_price = None
             lowest_price = None
 
-            for price_data in self._pricing_data['prices']:
-                price = price_data['price']
-                
+            for price_data in self._pricing_data["prices"]:
+                price = price_data["price"]
+
                 if highest_price is None or price > highest_price:
                     highest_price = price
-                
+
                 if lowest_price is None or price < lowest_price:
                     lowest_price = price
 
             self._state = highest_price
 
         if self._type == "lowest_price_today":
-
             # Initialize variables
             highest_price = None
             lowest_price = None
 
-            for price_data in self._pricing_data['prices']:
-                price = price_data['price']
-                
+            for price_data in self._pricing_data["prices"]:
+                price = price_data["price"]
+
                 if highest_price is None or price > highest_price:
                     highest_price = price
-                
+
                 if lowest_price is None or price < lowest_price:
                     lowest_price = price
 
             self._state = lowest_price
 
         if self._type == "highest_price_today_hour":
-
             # Initialize variables
             highest_price = None
             lowest_price = None
 
-            for price_data in self._pricing_data['prices']:
-                price = price_data['price']
-                timestamp = price_data['timestamp']
-                
+            for price_data in self._pricing_data["prices"]:
+                price = price_data["price"]
+                timestamp = price_data["timestamp"]
+
                 if highest_price is None or price > highest_price:
                     highest_price = price
                     highest_price_timestamp = timestamp
-                
+
                 if lowest_price is None or price < lowest_price:
                     lowest_price = price
                     lowest_price_timestamp = timestamp
@@ -438,23 +444,22 @@ class TibberSensor(Entity):
             self._state = highest_price_timestamp
 
         if self._type == "lowest_price_today_hour":
-
             # Initialize variables
             highest_price = None
             lowest_price = None
 
-            for price_data in self._pricing_data['prices']:
-                price = price_data['price']
-                timestamp = price_data['timestamp']
-                
+            for price_data in self._pricing_data["prices"]:
+                price = price_data["price"]
+                timestamp = price_data["timestamp"]
+
                 if highest_price is None or price > highest_price:
                     highest_price = price
                     highest_price_timestamp = timestamp
-                
+
                 if lowest_price is None or price < lowest_price:
                     lowest_price = price
                     lowest_price_timestamp = timestamp
 
             self._state = lowest_price_timestamp
 
-        _LOGGER.debug("Device: {} State: {}".format(self._attr_name, self._state))
+        _LOGGER.debug(f"Device: {self._attr_name} State: {self._state}")
