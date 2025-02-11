@@ -8,16 +8,14 @@ sensor:
         name: Hartmanssdorf
         postalcode: 07586
 """
+
 import asyncio
-import logging
 from datetime import datetime, timedelta
+import logging
 from typing import Final
 
 import aiohttp
 import async_timeout
-import homeassistant.helpers.config_validation as cv
-import pytz
-import voluptuous as vol
 from homeassistant.components.sensor import (
     PLATFORM_SCHEMA,
     SensorDeviceClass,
@@ -26,8 +24,11 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import CONF_NAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
+import pytz
+import voluptuous as vol
 
 TIBBER_API_URL = "https://tibber.com/de/api/lookup/price-overview?postalCode={0}"
 _LOGGER = logging.getLogger(__name__)
@@ -312,9 +313,7 @@ class TibberSensor(Entity):
         """Return the state attributes of this device."""
 
         # Get the local timezone
-        local_timezone = pytz.timezone(
-            "Europe/Amsterdam"
-        )  # Replace with your local timezone
+        local_timezone = pytz.timezone("Europe/Amsterdam")  # Replace with your local timezone
 
         # Get the current time with the local timezone
         now = datetime.now(local_timezone)
@@ -348,9 +347,7 @@ class TibberSensor(Entity):
         """This hour price including taxes."""
         if self._type == "current_price":
             # Get the local timezone
-            local_timezone = pytz.timezone(
-                "Europe/Amsterdam"
-            )  # Replace with your local timezone
+            local_timezone = pytz.timezone("Europe/Amsterdam")  # Replace with your local timezone
 
             # Get the current time with the local timezone
             now = datetime.now(local_timezone)
@@ -369,9 +366,7 @@ class TibberSensor(Entity):
         """Next hour price including taxes."""
         if self._type == "next_hour_price":
             # Get the local timezone
-            local_timezone = pytz.timezone(
-                "Europe/Amsterdam"
-            )  # Replace with your local timezone
+            local_timezone = pytz.timezone("Europe/Amsterdam")  # Replace with your local timezone
 
             # Get the current time with the local timezone
             now = datetime.now(local_timezone)
