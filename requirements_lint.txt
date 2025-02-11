@@ -6,3 +6,4 @@ pre-commit-hooks==5.0.0
 pyupgrade==3.19.1
 ruff==0.9.5
 vulture==2.14
+mypy==1.15.0
