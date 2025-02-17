@@ -85,14 +85,16 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None) -> None:
+async def async_setup_platform(
+    hass: Any, config: dict[str, Any], async_add_entities: Any, discovery_info: Optional[Any] = None
+) -> None:
     """Setup the Tibber Pricing sensors."""
 
-    postalcode = config.get(CONST_POSTALCODE)
-    default_name = config.get(CONF_NAME)
+    postalcode: str = config.get(CONST_POSTALCODE)
+    default_name: str = config.get(CONF_NAME)
 
-    session = async_get_clientsession(hass)
-    data = TibberData(session, postalcode)
+    session: aiohttp.ClientSession = async_get_clientsession(hass)
+    data: TibberData = TibberData(session, postalcode)
 
     try:
         await data.async_update()
@@ -100,7 +102,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         _LOGGER.error("Error while fetching data from Tibber API: %s", err)
         return
 
-    entities = []
+    entities = list[TibberSensor] = []
     for description in SENSOR_TYPES:
         sensor = TibberSensor(description, data, default_name)
         entities.append(sensor)
@@ -115,8 +117,8 @@ class TibberData:
     def __init__(self, session: aiohttp.ClientSession, postalcode: str) -> None:
         """Initialize."""
 
-        self._session = session
-        self._postalcode = postalcode
+        self._session: aiohttp.ClientSession = session
+        self._postalcode: str = postalcode
         self._data: Optional[dict[str, Any]] = None
 
     @property
@@ -131,16 +133,18 @@ class TibberData:
         pricing_data: dict[str, Any] = {}
         prices_data: list[dict[str, Any]] = []
         try:
-            url = TIBBER_API_URL.format(self._postalcode)
+            url: str = TIBBER_API_URL.format(self._postalcode)
             with async_timeout.timeout(5):
-                response = await self._session.get(url)
-            _LOGGER.debug("Response status from the Tibber API: %s", response.status)
+                response: aiohttp.ClientResponse = await self._session.get(url)
+            _LOGGER.debug(
+                "Response status from the Tibber API: %s", response.status)
         except aiohttp.ClientError:
             _LOGGER.error("Cannot connect to the Tibber API")
             self._data = None
             return
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout occurred while trying to connect to the Tibber API")
+            _LOGGER.error(
+                "Timeout occurred while trying to connect to the Tibber API")
             self._data = None
             return
         except Exception as err:
@@ -152,7 +156,7 @@ class TibberData:
             return
 
         try:
-            json_data = await response.json()
+            json_data: dict[str, Any] = await response.json()
             _LOGGER.debug("Data received from Tibber API: %s", json_data)
         except Exception as err:
             _LOGGER.error("Cannot parse data from Tibber API: %s", err)
@@ -169,7 +173,7 @@ class TibberData:
                     pricing["priceIncludingVat"],
                     pricing["priceComponents"],
                 )
-                price = {}
+                price: dict[str, Any] = {}
                 # Ensure the hour is always two digits
                 formatted_hour = str(pricing["hour"]).zfill(2)
                 price["timestamp"] = f"{pricing['date']} {formatted_hour}:00:00+02:00"
@@ -195,16 +199,16 @@ class TibberSensor(Entity):
         self, description: SensorEntityDescription, data: TibberData, default_name: str
     ) -> None:
         """Initialize the sensor."""
-        self.entity_description = description
-        self._data = data
+        self.entity_description: SensorEntityDescription = description
+        self._data: TibberData = data
 
-        self._default_name = default_name
+        self._default_name: str = default_name
         self._state: Optional[Any] = None
 
-        self._type = self.entity_description.key
-        self._attr_icon = self.entity_description.icon
-        self._attr_name = self._default_name + " " + self.entity_description.name
-        self._attr_unique_id = f"{self._default_name} {self._type}"
+        self._type: str = self.entity_description.key
+        self._attr_icon: str = self.entity_description.icon
+        self._attr_name: str = self._default_name + " " + self.entity_description.name
+        self._attr_unique_id: str = f"{self._default_name} {self._type}"
 
         self._discovery = False
 
@@ -222,11 +226,11 @@ class TibberSensor(Entity):
         local_timezone = pytz.timezone("Europe/Amsterdam")
 
         # Get the current time with the local timezone
-        now = datetime.now(local_timezone)
-        timestamp = now.strftime("%Y-%m-%d %H:00:00+02:00")
+        now: datetime = datetime.now(local_timezone)
+        timestamp: str = now.strftime("%Y-%m-%d %H:00:00+02:00")
 
         # Find the matching entry
-        matching_entry = None
+        matching_entry: Optional[dict[str, Any]] = None
         for pricing in self._pricing_data["prices"]:
             if pricing["timestamp"] == timestamp:
                 matching_entry = pricing
@@ -248,21 +252,21 @@ class TibberSensor(Entity):
         """Get the latest data and use it to update our sensor state."""
 
         await self._data.async_update()
-        self._pricing_data = self._data.latest_data
+        self._pricing_data: Optional[dict[str, Any]] = self._data.latest_data
 
         """This hour price including taxes."""
         if self._type == "current_price":
             # Get the local timezone
             # Replace with your local timezone
-            local_timezone = pytz.timezone("Europe/Amsterdam")
+            local_timezone: pytz.BaseTzInfo = pytz.timezone("Europe/Amsterdam")
 
             # Get the current time with the local timezone
-            now = datetime.now(local_timezone)
+            now: datetime = datetime.now(local_timezone)
             # now = datetime.now()
-            timestamp = now.strftime("%Y-%m-%d %H:00:00+02:00")
+            timestamp: str = now.strftime("%Y-%m-%d %H:00:00+02:00")
 
             # Find the matching entry
-            matching_entry = None
+            matching_entry: Optional[dict[str, Any]] = None
             for pricing in self._pricing_data["prices"]:
                 if pricing["timestamp"] == timestamp:
                     matching_entry = pricing
@@ -297,8 +301,8 @@ class TibberSensor(Entity):
         """Highest price today including taxes."""
         if self._type == "highest_price_today":
             # Initialize variables
-            highest_price = None
-            lowest_price = None
+            highest_price: Optional[float] = None
+            lowest_price: Optional[float] = None
 
             for price_data in self._pricing_data["prices"]:
                 price = price_data["price"]
@@ -313,8 +317,8 @@ class TibberSensor(Entity):
 
         if self._type == "lowest_price_today":
             # Initialize variables
-            highest_price = None
-            lowest_price = None
+            highest_price: Optional[float] = None
+            lowest_price: Optional[float] = None
 
             for price_data in self._pricing_data["prices"]:
                 price = price_data["price"]
@@ -329,8 +333,9 @@ class TibberSensor(Entity):
 
         if self._type == "highest_price_today_hour":
             # Initialize variables
-            highest_price = None
-            lowest_price = None
+            highest_price: Optional[float] = None
+            lowest_price: Optional[float] = None
+            highest_price_timestamp: Optional[str] = None
 
             for price_data in self._pricing_data["prices"]:
                 price = price_data["price"]
@@ -348,8 +353,9 @@ class TibberSensor(Entity):
 
         if self._type == "lowest_price_today_hour":
             # Initialize variables
-            highest_price = None
-            lowest_price = None
+            highest_price: Optional[float] = None
+            lowest_price: Optional[float] = None
+            lowest_price_timestamp: Optional[str] = None
 
             for price_data in self._pricing_data["prices"]:
                 price = price_data["price"]
