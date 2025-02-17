@@ -1,4 +1,4 @@
-# Tibber Pricing DE
+# Tibber Pricing DE Sensor for Home Assistant
 
 Get Tibber dynamic pricing information in home-assistant (Germany only, no account needed)
 
@@ -9,38 +9,39 @@ Get Tibber dynamic pricing information in home-assistant (Germany only, no accou
 ![Project Maintenance][maintenance-shield]
 [![Sponsor][sponsor-shield]][sponsor]
 
-**This integration will set up the following platforms.**
-
-| Platform | Description                                                    |
-| -------- | -------------------------------------------------------------- |
-
-
 ## Installation
 
 ### HACS - Recommended
 
 - Have [HACS](https://hacs.xyz) installed, this will allow you to easily manage and track updates.
-- Search for 'Tibber Pricing DE'.
-- Click Install below the found integration.
-- Configure using the configuration instructions below.
-- Restart Home-Assistant.
+- Goto the Custom Repository menu in HACS, paste https://github.com/cyberjunky/home-assistant-tibber_pricing_de as URL and select Integration as type.
+- Search for 'Tibber Pricing DE' in HACS.
+- Click the Download button at the bottom of the page of the found integration.
+- Restart Home Assistant.
+- Under Services -> Devices & services click the Add Integration button, search for 'Tibber Pricing DE'.
+- Configure the integration using the instructions below.
 
-### Manual
+### Manual - Without HACS
 
 - Copy directory `custom_components/tibber_pricing_de` to your `<config dir>/custom_components` directory.
-- Configure with config below.
 - Restart Home-Assistant.
+- Add the integration and configure it using the instructions below
 
-## Configuration
+## Configuration Flow
 
-Edit configuration.yaml and enter something like this.
-```
-sensor:
-  - platform: tibber_pricing_de
-    name: Hartmannsdorf
-    postalcode: 07586
-```
-Restart Home Assistant,
+This component supports a configuration flow that allows you to set up the sensor through the Home Assistant UI. You will be prompted to enter the name and postal code during the setup process.
+
+## Usage
+
+Once configured, the sensor will provide the following data:
+
+- Current Price
+- Next Hour Price
+- Highest Price Today
+- Lowest Price Today
+- Timestamps for the highest and lowest prices today
+
+You can view these values in the Home Assistant dashboard.
 
 ## Debugging
 
@@ -52,6 +53,8 @@ logger:
   logs:
     custom_components.tibber_pricing_de: debug
 ```
+
+Or click Debug button on the integration page inside Home Assistant
 
 <!---->
 

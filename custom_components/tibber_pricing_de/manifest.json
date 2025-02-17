@@ -4,10 +4,11 @@
     "codeowners": [
         "@cyberjunky"
     ],
+    "config_flow": true,
     "dependencies": [],
     "documentation": "https://github.com/cyberjunky/home-assistant-tibber_pricing_de",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/cyberjunky/home-assistant-tibber_pricing_de/issues",
     "requirements": [],
     "version": "1.0.0"
-}
+  }

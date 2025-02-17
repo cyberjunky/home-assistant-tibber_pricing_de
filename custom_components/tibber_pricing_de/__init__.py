@@ -1,1 +1,5 @@
-"""The tibber_pricing_de integration."""
+"""
+Initialize the Tibber Pricing custom component.
+
+This file may contain setup functions and other initialization code.
+"""
