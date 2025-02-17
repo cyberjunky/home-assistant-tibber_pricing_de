@@ -22,22 +22,24 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import Throttle
 import pytz
 import voluptuous as vol
-from .const import DOMAIN, CONF_POSTALCODE, CONF_NAME
 
-TIBBER_API_URL = "https://tibber.com/de/api/lookup/price-overview?postalCode={0}"
+from .const import CONF_POSTALCODE, TIBBER_API_URL
+
 _LOGGER = logging.getLogger(__name__)
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(hours=1)
 
 SENSOR_PREFIX = "Tibber Pricing"
-CONST_POSTALCODE = "postalcode"
 
 SENSOR_TYPES: Final[tuple[SensorEntityDescription, ...]] = (
     SensorEntityDescription(
@@ -81,12 +83,14 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription, ...]] = (
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Optional(CONF_NAME, default=SENSOR_PREFIX): cv.string,
-        vol.Required(CONST_POSTALCODE): cv.string,
+        vol.Required(CONF_POSTALCODE): cv.string,
     }
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> None:
     """Set up Tibber Pricing sensors from a config entry."""
     config = entry.data
     postalcode = config[CONF_POSTALCODE]
@@ -114,7 +118,7 @@ async def async_setup_platform(
 ) -> None:
     """Setup the Tibber Pricing sensors."""
 
-    postalcode: str = config.get(CONST_POSTALCODE)
+    postalcode: str = config.get(CONF_POSTALCODE)
     default_name: str = config.get(CONF_NAME)
 
     session: aiohttp.ClientSession = async_get_clientsession(hass)
@@ -160,15 +164,13 @@ class TibberData:
             url: str = TIBBER_API_URL.format(self._postalcode)
             with async_timeout.timeout(5):
                 response: aiohttp.ClientResponse = await self._session.get(url)
-            _LOGGER.debug(
-                "Response status from the Tibber API: %s", response.status)
+            _LOGGER.debug("Response status from the Tibber API: %s", response.status)
         except aiohttp.ClientError:
             _LOGGER.error("Cannot connect to the Tibber API")
             self._data = None
             return
         except asyncio.TimeoutError:
-            _LOGGER.error(
-                "Timeout occurred while trying to connect to the Tibber API")
+            _LOGGER.error("Timeout occurred while trying to connect to the Tibber API")
             self._data = None
             return
         except Exception as err:
@@ -278,6 +280,11 @@ class TibberSensor(Entity):
         await self._data.async_update()
         self._pricing_data: Optional[dict[str, Any]] = self._data.latest_data
 
+        # Initialize variables
+        highest_price: Optional[float] = None
+        lowest_price: Optional[float] = None
+        highest_price_timestamp: Optional[str] = None
+
         """This hour price including taxes."""
         if self._type == "current_price":
             # Get the local timezone
@@ -324,10 +331,6 @@ class TibberSensor(Entity):
 
         """Highest price today including taxes."""
         if self._type == "highest_price_today":
-            # Initialize variables
-            highest_price: Optional[float] = None
-            lowest_price: Optional[float] = None
-
             for price_data in self._pricing_data["prices"]:
                 price = price_data["price"]
 
@@ -340,10 +343,6 @@ class TibberSensor(Entity):
             self._state = highest_price
 
         if self._type == "lowest_price_today":
-            # Initialize variables
-            highest_price: Optional[float] = None
-            lowest_price: Optional[float] = None
-
             for price_data in self._pricing_data["prices"]:
                 price = price_data["price"]
 
@@ -356,11 +355,6 @@ class TibberSensor(Entity):
             self._state = lowest_price
 
         if self._type == "highest_price_today_hour":
-            # Initialize variables
-            highest_price: Optional[float] = None
-            lowest_price: Optional[float] = None
-            highest_price_timestamp: Optional[str] = None
-
             for price_data in self._pricing_data["prices"]:
                 price = price_data["price"]
                 timestamp = price_data["timestamp"]
@@ -376,11 +370,6 @@ class TibberSensor(Entity):
             self._state = highest_price_timestamp
 
         if self._type == "lowest_price_today_hour":
-            # Initialize variables
-            highest_price: Optional[float] = None
-            lowest_price: Optional[float] = None
-            lowest_price_timestamp: Optional[str] = None
-
             for price_data in self._pricing_data["prices"]:
                 price = price_data["price"]
                 timestamp = price_data["timestamp"]
