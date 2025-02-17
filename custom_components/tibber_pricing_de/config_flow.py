@@ -1,9 +1,10 @@
 from homeassistant import config_entries
 from homeassistant.const import CONF_NAME
-from .const import CONST_POSTALCODE
+from .const import CONF_POSTALCODE, DOMAIN
 
 
-class TibberPricingConfigFlow(config_entries.ConfigFlow, domain="tibber_pricing_de"):
+# type: ignore[misc, call-arg]
+class TibberPricingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
@@ -11,7 +12,7 @@ class TibberPricingConfigFlow(config_entries.ConfigFlow, domain="tibber_pricing_
             return self.async_show_form(step_id="user", data_schema=self._get_data_schema())
 
         name = user_input[CONF_NAME]
-        postalcode = user_input[CONST_POSTALCODE]
+        postalcode = user_input[CONF_POSTALCODE]
 
         return self.async_create_entry(title=name, data=user_input)
 
@@ -21,5 +22,5 @@ class TibberPricingConfigFlow(config_entries.ConfigFlow, domain="tibber_pricing_
 
         return vol.Schema({
             vol.Required(CONF_NAME, default="Tibber Pricing"): str,
-            vol.Required(CONST_POSTALCODE): cv.string,
+            vol.Required(CONF_POSTALCODE): cv.string,
         })

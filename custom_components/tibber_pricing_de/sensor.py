@@ -29,6 +29,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 import pytz
 import voluptuous as vol
+from .const import DOMAIN, CONF_POSTALCODE, CONF_NAME
 
 TIBBER_API_URL = "https://tibber.com/de/api/lookup/price-overview?postalCode={0}"
 _LOGGER = logging.getLogger(__name__)
@@ -83,6 +84,29 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONST_POSTALCODE): cv.string,
     }
 )
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+    """Set up Tibber Pricing sensors from a config entry."""
+    config = entry.data
+    postalcode = config[CONF_POSTALCODE]
+    default_name = config[CONF_NAME]
+
+    session = async_get_clientsession(hass)
+    data = TibberData(session, postalcode)
+
+    try:
+        await data.async_update()
+    except ValueError as err:
+        _LOGGER.error("Error while fetching data from Tibber API: %s", err)
+        return
+
+    entities = []
+    for description in SENSOR_TYPES:
+        sensor = TibberSensor(description, data, default_name)
+        entities.append(sensor)
+
+    async_add_entities(entities, True)
 
 
 async def async_setup_platform(
