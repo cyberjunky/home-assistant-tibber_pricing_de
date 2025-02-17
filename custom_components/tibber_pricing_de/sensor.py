@@ -12,7 +12,7 @@ sensor:
 import asyncio
 from datetime import datetime, timedelta
 import logging
-from typing import Final
+from typing import Any, Final, Optional
 
 import aiohttp
 import async_timeout
@@ -37,8 +37,6 @@ MIN_TIME_BETWEEN_UPDATES = timedelta(hours=1)
 
 SENSOR_PREFIX = "Tibber Pricing"
 CONST_POSTALCODE = "postalcode"
-
-# https://github.com/JaccoR/hass-entso-e/blob/main/custom_components/entsoe/sensor.py
 
 SENSOR_TYPES: Final[tuple[SensorEntityDescription, ...]] = (
     SensorEntityDescription(
@@ -87,16 +85,15 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None) -> None:
     """Setup the Tibber Pricing sensors."""
 
-    # scan_interval = config.get(CONF_SCAN_INTERVAL)
     postalcode = config.get(CONST_POSTALCODE)
     default_name = config.get(CONF_NAME)
 
     session = async_get_clientsession(hass)
-
     data = TibberData(session, postalcode)
+
     try:
         await data.async_update()
     except ValueError as err:
@@ -115,26 +112,24 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class TibberData:
     """Handle Tibber data object and limit updates."""
 
-    def __init__(self, session, postalcode):
+    def __init__(self, session: aiohttp.ClientSession, postalcode: str) -> None:
         """Initialize."""
 
         self._session = session
         self._postalcode = postalcode
-        self._data = None
+        self._data: Optional[dict[str, Any]] = None
 
     @property
-    def latest_data(self):
+    def latest_data(self) -> Optional[dict[str, Any]]:
         """Return the latest data object."""
-        if self._data:
-            return self._data
-        return None
+        return self._data
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    async def async_update(self):
+    async def async_update(self) -> None:
         """Get the pricing data."""
 
-        pricing_data = {}
-        prices_data = []
+        pricing_data: dict[str, Any] = {}
+        prices_data: list[dict[str, Any]] = []
         try:
             url = TIBBER_API_URL.format(self._postalcode)
             with async_timeout.timeout(5):
@@ -193,108 +188,18 @@ class TibberData:
             return False
 
 
-"""
-prices: 
-- timestamp: '2024-10-20 22:00:00+00:00'
-    price: 0
-- timestamp: '2024-10-20 23:00:00+00:00'
-    price: 0
-- timestamp: '2024-10-21 00:00:00+00:00'
-    price: 0
-- timestamp: '2024-10-21 01:00:00+00:00'
-    price: 0
-- timestamp: '2024-10-21 02:00:00+00:00'
-    price: 0
-- timestamp: '2024-10-21 03:00:00+00:00'
-    price: 0
-- timestamp: '2024-10-21 04:00:00+00:00'
-    price: 0.07
-- timestamp: '2024-10-21 05:00:00+00:00'
-    price: 0.12
-"""
-"""
-"energy": {
-        "todayHours": [
-            {
-                "hour": 0,
-                "date": "2024-10-21",
-                "priceIncludingVat": 0.1683,
-                "priceExcludingVat": 0.1414,
-                "priceComponents": [
-                    {
-                        "type": "taxes",
-                        "priceExcludingVat": 0.0675,
-                        "priceIncludingVat": 0.0803
-                    },
-                    {
-                        "type": "power",
-                        "priceExcludingVat": -0.0001,
-                        "priceIncludingVat": -0.0001
-                    },
-                    {
-                        "type": "grid",
-                        "priceIncludingVat": 0.08806,
-                        "priceExcludingVat": 0.074
-                    }
-                ]
-            },
-...
-        "monthlyFees": {
-                "priceExcludingVat": 13.14,
-                "priceIncludingVat": 15.64,
-                "priceComponents": [
-                    {
-                        "type": "tibber service fee",
-                        "priceExcludingVat": 5.03,
-                        "priceIncludingVat": 5.99
-                    },
-                    {
-                        "type": "meter operator",
-                        "priceExcludingVat": 0.81,
-                        "priceIncludingVat": 0.96
-                    },
-                    {
-                        "type": "grid",
-                        "priceExcludingVat": 7.3,
-                        "priceIncludingVat": 8.69
-                    }
-                ]
-            }
-...
-        "today": {
-            "priceExcludingVat": 0.2245,
-            "priceIncludingVat": 0.2672,
-            "priceComponents": [
-                {
-                    "type": "taxes",
-                    "priceExcludingVat": 0.0675,
-                    "priceIncludingVat": 0.0803
-                },
-                {
-                    "type": "power",
-                    "priceExcludingVat": 0.083,
-                    "priceIncludingVat": 0.0988
-                },
-                {
-                    "type": "grid",
-                    "priceIncludingVat": 0.08806,
-                    "priceExcludingVat": 0.074
-                }
-            ]
-        },
-"""
-
-
 class TibberSensor(Entity):
     """Representation of a Tibber Sensor."""
 
-    def __init__(self, description, data, default_name):
+    def __init__(
+        self, description: SensorEntityDescription, data: TibberData, default_name: str
+    ) -> None:
         """Initialize the sensor."""
         self.entity_description = description
         self._data = data
 
         self._default_name = default_name
-        self._state = None
+        self._state: Optional[Any] = None
 
         self._type = self.entity_description.key
         self._attr_icon = self.entity_description.icon
@@ -304,16 +209,17 @@ class TibberSensor(Entity):
         self._discovery = False
 
     @property
-    def state(self):
+    def state(self) -> Optional[Any]:
         """Return the state of the sensor."""
         return self._state
 
     @property
-    def extra_state_attributes(self):
+    def extra_state_attributes(self) -> Optional[dict[str, Any]]:
         """Return the state attributes of this device."""
 
         # Get the local timezone
-        local_timezone = pytz.timezone("Europe/Amsterdam")  # Replace with your local timezone
+        # Replace with your local timezone
+        local_timezone = pytz.timezone("Europe/Amsterdam")
 
         # Get the current time with the local timezone
         now = datetime.now(local_timezone)
@@ -338,7 +244,7 @@ class TibberSensor(Entity):
             "price_components": matching_entry["priceComponents"],
         }
 
-    async def async_update(self):
+    async def async_update(self) -> None:
         """Get the latest data and use it to update our sensor state."""
 
         await self._data.async_update()
@@ -347,7 +253,8 @@ class TibberSensor(Entity):
         """This hour price including taxes."""
         if self._type == "current_price":
             # Get the local timezone
-            local_timezone = pytz.timezone("Europe/Amsterdam")  # Replace with your local timezone
+            # Replace with your local timezone
+            local_timezone = pytz.timezone("Europe/Amsterdam")
 
             # Get the current time with the local timezone
             now = datetime.now(local_timezone)
@@ -366,7 +273,8 @@ class TibberSensor(Entity):
         """Next hour price including taxes."""
         if self._type == "next_hour_price":
             # Get the local timezone
-            local_timezone = pytz.timezone("Europe/Amsterdam")  # Replace with your local timezone
+            # Replace with your local timezone
+            local_timezone = pytz.timezone("Europe/Amsterdam")
 
             # Get the current time with the local timezone
             now = datetime.now(local_timezone)
