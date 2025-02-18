@@ -53,7 +53,8 @@ async def async_setup_entry(
 
     entities = []
     for description in SENSOR_TYPES:
-        sensor = TibberSensor(description, data, default_name, hass.config.time_zone)
+        sensor = TibberPricingSensor(
+            description, data, default_name, hass.config.time_zone)
         entities.append(sensor)
 
     async_add_entities(entities, True)
@@ -74,7 +75,7 @@ class TibberData:
         """Return the latest data object."""
         return self._data
 
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self) -> None:
         """Get the pricing data."""
 
@@ -84,13 +85,15 @@ class TibberData:
             url: str = TIBBER_API_URL.format(self._postalcode)
             async with async_timeout.timeout(5):
                 response: aiohttp.ClientResponse = await self._session.get(url)
-            _LOGGER.debug("Response status from the Tibber API: %s", response.status)
+            _LOGGER.debug(
+                "Response status from the Tibber API: %s", response.status)
         except aiohttp.ClientError:
             _LOGGER.error("Cannot connect to the Tibber API")
             self._data = None
             return
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout occurred while trying to connect to the Tibber API")
+            _LOGGER.error(
+                "Timeout occurred while trying to connect to the Tibber API")
             self._data = None
             return
         except Exception as err:
@@ -137,7 +140,7 @@ class TibberData:
             self._data = None
 
 
-class TibberSensor(Entity):
+class TibberPricingSensor(Entity):
     """Representation of a Tibber Sensor."""
 
     def __init__(
@@ -184,10 +187,10 @@ class TibberSensor(Entity):
 
         if self._type == "current_price":
             return {
-                "prices": self._pricing_data["prices"],
+                "prices": self._pricing_data["prices"] if self._pricing_data else None,
                 "price_components": matching_entry["priceComponents"] if matching_entry else None,
-                "today": self._pricing_data["today"],
-                "monthly": self._pricing_data["monthly"],
+                "today": self._pricing_data["today"] if self._pricing_data else None,
+                "monthly": self._pricing_data["monthly"] if self._pricing_data else None,
             }
 
         return {
