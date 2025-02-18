@@ -1,91 +1,29 @@
 """
 Support for reading Tibber's dynamic pricing data for a German postal code.
-
-configuration.yaml
-
-sensor:
-    - platform: tibber_pricing_de
-        name: Hartmanssdorf
-        postalcode: 07586
 """
 
 import asyncio
 from datetime import datetime, timedelta
 import logging
-from typing import Any, Final, Optional
+from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 import aiohttp
 import async_timeout
-from homeassistant.components.sensor import (
-    PLATFORM_SCHEMA,
-    SensorDeviceClass,
-    SensorEntityDescription,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import Throttle
-import pytz
-import voluptuous as vol
 
-from .const import CONF_POSTALCODE, TIBBER_API_URL
+from .const import CONF_POSTALCODE, SENSOR_TYPES, TIBBER_API_URL
 
 _LOGGER = logging.getLogger(__name__)
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(hours=1)
-
-SENSOR_PREFIX = "Tibber Pricing"
-
-SENSOR_TYPES: Final[tuple[SensorEntityDescription, ...]] = (
-    SensorEntityDescription(
-        key="current_price",
-        name="Current Price",
-        icon="mdi:currency-eur",
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    SensorEntityDescription(
-        key="next_hour_price",
-        name="Next Hour Price",
-        icon="mdi:chevron-right",
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    SensorEntityDescription(
-        key="highest_price_today",
-        name="Highest Price Today",
-        icon="mdi:gauge-full",
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    SensorEntityDescription(
-        key="highest_price_today_hour",
-        name="Highest Price Today Hour",
-        icon="mdi:calendar-clock-outline",
-        state_class=SensorDeviceClass.TIMESTAMP,
-    ),
-    SensorEntityDescription(
-        key="lowest_price_today",
-        name="Lowest Price Today",
-        icon="mdi:gauge-empty",
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    SensorEntityDescription(
-        key="lowest_price_today_hour",
-        name="Lowest Price Today Hour",
-        icon="mdi:calendar-clock-outline",
-        state_class=SensorDeviceClass.TIMESTAMP,
-    ),
-)
-
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Optional(CONF_NAME, default=SENSOR_PREFIX): cv.string,
-        vol.Required(CONF_POSTALCODE): cv.string,
-    }
-)
 
 
 async def async_setup_entry(
@@ -95,6 +33,14 @@ async def async_setup_entry(
     config = entry.data
     postalcode = config[CONF_POSTALCODE]
     default_name = config[CONF_NAME]
+
+    if postalcode is None:
+        _LOGGER.error("Postal code is missing in the configuration entry")
+        return
+
+    if default_name is None:
+        _LOGGER.error("Name is missing in the configuration entry")
+        return
 
     session = async_get_clientsession(hass)
     data = TibberData(session, postalcode)
@@ -107,38 +53,12 @@ async def async_setup_entry(
 
     entities = []
     for description in SENSOR_TYPES:
-        sensor = TibberSensor(description, data, default_name)
+        sensor = TibberSensor(description, data, default_name, hass.config.time_zone)
         entities.append(sensor)
 
     async_add_entities(entities, True)
 
 
-async def async_setup_platform(
-    hass: Any, config: dict[str, Any], async_add_entities: Any, discovery_info: Optional[Any] = None
-) -> None:
-    """Setup the Tibber Pricing sensors."""
-
-    postalcode: str = config.get(CONF_POSTALCODE)
-    default_name: str = config.get(CONF_NAME)
-
-    session: aiohttp.ClientSession = async_get_clientsession(hass)
-    data: TibberData = TibberData(session, postalcode)
-
-    try:
-        await data.async_update()
-    except ValueError as err:
-        _LOGGER.error("Error while fetching data from Tibber API: %s", err)
-        return
-
-    entities = list[TibberSensor] = []
-    for description in SENSOR_TYPES:
-        sensor = TibberSensor(description, data, default_name)
-        entities.append(sensor)
-
-    async_add_entities(entities, True)
-
-
-# pylint: disable=abstract-method
 class TibberData:
     """Handle Tibber data object and limit updates."""
 
@@ -162,7 +82,7 @@ class TibberData:
         prices_data: list[dict[str, Any]] = []
         try:
             url: str = TIBBER_API_URL.format(self._postalcode)
-            with async_timeout.timeout(5):
+            async with async_timeout.timeout(5):
                 response: aiohttp.ClientResponse = await self._session.get(url)
             _LOGGER.debug("Response status from the Tibber API: %s", response.status)
         except aiohttp.ClientError:
@@ -215,26 +135,30 @@ class TibberData:
         except ValueError as err:
             _LOGGER.error("Cannot parse the Tibber API data %s", err.args)
             self._data = None
-            return False
 
 
 class TibberSensor(Entity):
     """Representation of a Tibber Sensor."""
 
     def __init__(
-        self, description: SensorEntityDescription, data: TibberData, default_name: str
+        self,
+        description: SensorEntityDescription,
+        data: TibberData,
+        default_name: str,
+        time_zone: str,
     ) -> None:
         """Initialize the sensor."""
         self.entity_description: SensorEntityDescription = description
         self._data: TibberData = data
-
+        self._time_zone = time_zone
         self._default_name: str = default_name
-        self._state: Optional[Any] = None
 
+        self._state: Optional[Any] = None
         self._type: str = self.entity_description.key
         self._attr_icon: str = self.entity_description.icon
         self._attr_name: str = self._default_name + " " + self.entity_description.name
         self._attr_unique_id: str = f"{self._default_name} {self._type}"
+        self._local_timezone = ZoneInfo(self._time_zone)
 
         self._discovery = False
 
@@ -247,12 +171,8 @@ class TibberSensor(Entity):
     def extra_state_attributes(self) -> Optional[dict[str, Any]]:
         """Return the state attributes of this device."""
 
-        # Get the local timezone
-        # Replace with your local timezone
-        local_timezone = pytz.timezone("Europe/Amsterdam")
-
         # Get the current time with the local timezone
-        now: datetime = datetime.now(local_timezone)
+        now: datetime = datetime.now(self._local_timezone)
         timestamp: str = now.strftime("%Y-%m-%d %H:00:00+02:00")
 
         # Find the matching entry
@@ -265,13 +185,13 @@ class TibberSensor(Entity):
         if self._type == "current_price":
             return {
                 "prices": self._pricing_data["prices"],
-                "price_components": matching_entry["priceComponents"],
+                "price_components": matching_entry["priceComponents"] if matching_entry else None,
                 "today": self._pricing_data["today"],
                 "monthly": self._pricing_data["monthly"],
             }
 
         return {
-            "price_components": matching_entry["priceComponents"],
+            "price_components": matching_entry["priceComponents"] if matching_entry else None,
         }
 
     async def async_update(self) -> None:
@@ -283,17 +203,13 @@ class TibberSensor(Entity):
         # Initialize variables
         highest_price: Optional[float] = None
         lowest_price: Optional[float] = None
-        highest_price_timestamp: Optional[str] = None
+        highest_price_timestamp: str = ""
+        lowest_price_timestamp: str = ""
+        now = datetime.now(self._local_timezone)
 
         """This hour price including taxes."""
         if self._type == "current_price":
-            # Get the local timezone
-            # Replace with your local timezone
-            local_timezone: pytz.BaseTzInfo = pytz.timezone("Europe/Amsterdam")
-
             # Get the current time with the local timezone
-            now: datetime = datetime.now(local_timezone)
-            # now = datetime.now()
             timestamp: str = now.strftime("%Y-%m-%d %H:00:00+02:00")
 
             # Find the matching entry
@@ -303,18 +219,11 @@ class TibberSensor(Entity):
                     matching_entry = pricing
                     break
 
-            self._state = matching_entry["price"]
+            self._state = matching_entry["price"] if matching_entry else None
 
         """Next hour price including taxes."""
         if self._type == "next_hour_price":
-            # Get the local timezone
-            # Replace with your local timezone
-            local_timezone = pytz.timezone("Europe/Amsterdam")
-
             # Get the current time with the local timezone
-            now = datetime.now(local_timezone)
-
-            # now = datetime.now()
             one_hour_later = now + timedelta(hours=1)
 
             # Format the result as a string
@@ -327,7 +236,7 @@ class TibberSensor(Entity):
                     matching_entry = pricing
                     break
 
-            self._state = matching_entry["price"]
+            self._state = matching_entry["price"] if matching_entry else None
 
         """Highest price today including taxes."""
         if self._type == "highest_price_today":

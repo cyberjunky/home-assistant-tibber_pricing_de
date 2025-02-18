@@ -5,10 +5,10 @@
         "@cyberjunky"
     ],
     "config_flow": true,
-    "dependencies": ["httpx"],
+    "dependencies": [],
     "documentation": "https://github.com/cyberjunky/home-assistant-tibber_pricing_de",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/cyberjunky/home-assistant-tibber_pricing_de/issues",
-    "requirements": [],
+    "requirements": ["httpx"],
     "version": "1.0.0"
   }
