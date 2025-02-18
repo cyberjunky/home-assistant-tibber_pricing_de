@@ -75,7 +75,7 @@ class TibberData:
         """Return the latest data object."""
         return self._data
 
-    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self) -> None:
         """Get the pricing data."""
 
@@ -159,7 +159,8 @@ class TibberPricingSensor(Entity):
         self._state: Optional[Any] = None
         self._type: str = self.entity_description.key
         self._attr_icon: str = self.entity_description.icon
-        self._attr_name: str = self._default_name + " " + self.entity_description.name
+        self._attr_name: str = self._default_name + " " + \
+            self.entity_description.name if self.entity_description.name else self._default_name
         self._attr_unique_id: str = f"{self._default_name} {self._type}"
         self._local_timezone = ZoneInfo(self._time_zone)
 

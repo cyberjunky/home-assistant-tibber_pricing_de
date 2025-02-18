@@ -10,9 +10,8 @@ from .const import CONF_POSTALCODE, DOMAIN, TIBBER_API_URL
 _LOGGER = logging.getLogger(__name__)
 
 
-class TibberPricingConfigFlow(ConfigFlow):
+class TibberPricingConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 2
-    DOMAIN = DOMAIN
 
     async def async_step_user(self, user_input: Optional[dict[str, Any]] = None) -> Any:
         if user_input is None:
