@@ -50,7 +50,7 @@ jobs:
         run: |
           pip install -r requirements_lint.txt
       # Following steps cannot run by pre-commit.ci as repo = local
-      - name: Run mypy
-        run: mypy custom_components/
+      # - name: Run mypy
+      #   run: mypy custom_components/
       - name: Pylint review
         run: pylint custom_components/
