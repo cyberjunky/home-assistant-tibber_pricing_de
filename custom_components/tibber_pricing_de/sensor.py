@@ -27,10 +27,12 @@ MIN_TIME_BETWEEN_UPDATES = timedelta(hours=1)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Tibber Pricing sensors from a config entry."""
-    config = entry.data
+    config = config_entry.data
     postalcode = config[CONF_POSTALCODE]
     default_name = config[CONF_NAME]
 
@@ -53,8 +55,7 @@ async def async_setup_entry(
 
     entities = []
     for description in SENSOR_TYPES:
-        sensor = TibberPricingSensor(
-            description, data, default_name, hass.config.time_zone)
+        sensor = TibberPricingSensor(description, data, default_name, hass.config.time_zone)
         entities.append(sensor)
 
     async_add_entities(entities, True)
@@ -85,15 +86,13 @@ class TibberData:
             url: str = TIBBER_API_URL.format(self._postalcode)
             async with async_timeout.timeout(5):
                 response: aiohttp.ClientResponse = await self._session.get(url)
-            _LOGGER.debug(
-                "Response status from the Tibber API: %s", response.status)
+            _LOGGER.debug("Response status from the Tibber API: %s", response.status)
         except aiohttp.ClientError:
             _LOGGER.error("Cannot connect to the Tibber API")
             self._data = None
             return
         except asyncio.TimeoutError:
-            _LOGGER.error(
-                "Timeout occurred while trying to connect to the Tibber API")
+            _LOGGER.error("Timeout occurred while trying to connect to the Tibber API")
             self._data = None
             return
         except Exception as err:
@@ -154,13 +153,13 @@ class TibberPricingSensor(Entity):
         self.entity_description: SensorEntityDescription = description
         self._data: TibberData = data
         self._time_zone = time_zone
-        self._default_name: str = default_name
+        self._default_name: str = default_name if default_name else ""
 
         self._state: Optional[Any] = None
         self._type: str = self.entity_description.key
-        self._attr_icon: str = self.entity_description.icon
-        self._attr_name: str = self._default_name + " " + \
-            self.entity_description.name if self.entity_description.name else self._default_name
+        self._name: str = str(self.entity_description.name)
+        self._attr_icon: str = self.entity_description.icon or "mdi:currency-eur"
+        self._attr_name: str = self._default_name + " " + (self._name if self._name else "")
         self._attr_unique_id: str = f"{self._default_name} {self._type}"
         self._local_timezone = ZoneInfo(self._time_zone)
 
@@ -181,10 +180,11 @@ class TibberPricingSensor(Entity):
 
         # Find the matching entry
         matching_entry: Optional[dict[str, Any]] = None
-        for pricing in self._pricing_data["prices"]:
-            if pricing["timestamp"] == timestamp:
-                matching_entry = pricing
-                break
+        if self._pricing_data and self._pricing_data["prices"]:
+            for pricing in self._pricing_data["prices"]:
+                if pricing["timestamp"] == timestamp:
+                    matching_entry = pricing
+                    break
 
         if self._type == "current_price":
             return {
@@ -218,10 +218,11 @@ class TibberPricingSensor(Entity):
 
             # Find the matching entry
             matching_entry: Optional[dict[str, Any]] = None
-            for pricing in self._pricing_data["prices"]:
-                if pricing["timestamp"] == timestamp:
-                    matching_entry = pricing
-                    break
+            if self._pricing_data:
+                for pricing in self._pricing_data["prices"]:
+                    if pricing["timestamp"] == timestamp:
+                        matching_entry = pricing
+                        break
 
             self._state = matching_entry["price"] if matching_entry else None
 
@@ -235,66 +236,71 @@ class TibberPricingSensor(Entity):
 
             # Find the matching entry
             matching_entry = None
-            for pricing in self._pricing_data["prices"]:
-                if pricing["timestamp"] == timestamp:
-                    matching_entry = pricing
-                    break
+            if self._pricing_data:
+                for pricing in self._pricing_data["prices"]:
+                    if pricing["timestamp"] == timestamp:
+                        matching_entry = pricing
+                        break
 
             self._state = matching_entry["price"] if matching_entry else None
 
         """Highest price today including taxes."""
         if self._type == "highest_price_today":
-            for price_data in self._pricing_data["prices"]:
-                price = price_data["price"]
+            if self._pricing_data:
+                for price_data in self._pricing_data["prices"]:
+                    price = price_data["price"]
 
-                if highest_price is None or price > highest_price:
-                    highest_price = price
+                    if highest_price is None or price > highest_price:
+                        highest_price = price
 
-                if lowest_price is None or price < lowest_price:
-                    lowest_price = price
+                    if lowest_price is None or price < lowest_price:
+                        lowest_price = price
 
-            self._state = highest_price
+                self._state = highest_price
 
         if self._type == "lowest_price_today":
-            for price_data in self._pricing_data["prices"]:
-                price = price_data["price"]
+            if self._pricing_data:
+                for price_data in self._pricing_data["prices"]:
+                    price = price_data["price"]
 
-                if highest_price is None or price > highest_price:
-                    highest_price = price
+                    if highest_price is None or price > highest_price:
+                        highest_price = price
 
-                if lowest_price is None or price < lowest_price:
-                    lowest_price = price
+                    if lowest_price is None or price < lowest_price:
+                        lowest_price = price
 
-            self._state = lowest_price
+                self._state = lowest_price
 
         if self._type == "highest_price_today_hour":
-            for price_data in self._pricing_data["prices"]:
-                price = price_data["price"]
-                timestamp = price_data["timestamp"]
+            if self._pricing_data:
+                for price_data in self._pricing_data["prices"]:
+                    price = price_data["price"]
+                    timestamp = price_data["timestamp"]
 
-                if highest_price is None or price > highest_price:
-                    highest_price = price
-                    highest_price_timestamp = timestamp
+                    if highest_price is None or price > highest_price:
+                        highest_price = price
+                        highest_price_timestamp = timestamp
 
-                if lowest_price is None or price < lowest_price:
-                    lowest_price = price
-                    lowest_price_timestamp = timestamp
+                    if lowest_price is None or price < lowest_price:
+                        lowest_price = price
+                        lowest_price_timestamp = timestamp
 
-            self._state = highest_price_timestamp
+                self._state = highest_price_timestamp
 
         if self._type == "lowest_price_today_hour":
-            for price_data in self._pricing_data["prices"]:
-                price = price_data["price"]
-                timestamp = price_data["timestamp"]
+            if self._pricing_data:
+                for price_data in self._pricing_data["prices"]:
+                    price = price_data["price"]
+                    timestamp = price_data["timestamp"]
 
-                if highest_price is None or price > highest_price:
-                    highest_price = price
-                    highest_price_timestamp = timestamp
+                    if highest_price is None or price > highest_price:
+                        highest_price = price
+                        highest_price_timestamp = timestamp
 
-                if lowest_price is None or price < lowest_price:
-                    lowest_price = price
-                    lowest_price_timestamp = timestamp
+                    if lowest_price is None or price < lowest_price:
+                        lowest_price = price
+                        lowest_price_timestamp = timestamp
 
-            self._state = lowest_price_timestamp
+                self._state = lowest_price_timestamp
 
         _LOGGER.debug(f"Device: {self._attr_name} State: {self._state}")
