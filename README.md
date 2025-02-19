@@ -43,6 +43,41 @@ Once configured, the sensor will provide the following data:
 
 You can view these values in the Home Assistant dashboard.
 
+## Charts
+
+Install apexcharts via HACS.
+You can define this chart to get the today price per hour.
+```
+views:
+  - title: Home
+    cards:
+      - type: custom:apexcharts-card
+        graph_span: 24h
+        span:
+          start: day
+          offset: '-1h'
+        now:
+          show: true
+          label: Now
+        header:
+          show: true
+          title: Stroomprijs vandaag (€/kWh)
+        series:
+          - entity: sensor.your_sensor_current_price
+            stroke_width: 2
+            float_precision: 4
+            type: column
+            opacity: 1
+            color: ''
+            data_generator: |
+              return entity.attributes.prices.map((record, index) => {
+                return [record.timestamp, record.price];
+              });
+        yaxis:
+          - id: Prijs
+            decimals: 4
+```
+
 ## Debugging
 
 Add the relevant lines below to the `configuration.yaml`:

@@ -53,7 +53,8 @@ async def async_setup_entry(
 
     entities = []
     for description in SENSOR_TYPES:
-        sensor = TibberPricingSensor(description, data, default_name, hass.config.time_zone)
+        sensor = TibberPricingSensor(
+            description, data, default_name, hass.config.time_zone)
         entities.append(sensor)
 
     async_add_entities(entities, True)
@@ -84,13 +85,15 @@ class TibberData:
             url: str = TIBBER_API_URL.format(self._postalcode)
             async with async_timeout.timeout(5):
                 response: aiohttp.ClientResponse = await self._session.get(url)
-            _LOGGER.debug("Response status from the Tibber API: %s", response.status)
+            _LOGGER.debug(
+                "Response status from the Tibber API: %s", response.status)
         except aiohttp.ClientError:
             _LOGGER.error("Cannot connect to the Tibber API")
             self._data = None
             return
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout occurred while trying to connect to the Tibber API")
+            _LOGGER.error(
+                "Timeout occurred while trying to connect to the Tibber API")
             self._data = None
             return
         except Exception as err:
@@ -122,7 +125,7 @@ class TibberData:
                 price: dict[str, Any] = {}
                 # Ensure the hour is always two digits
                 formatted_hour = str(pricing["hour"]).zfill(2)
-                price["timestamp"] = f"{pricing['date']} {formatted_hour}:00:00+02:00"
+                price["timestamp"] = f"{pricing['date']} {formatted_hour}:00:00"
                 price["price"] = pricing["priceIncludingVat"]
                 price["priceComponents"] = pricing["priceComponents"]
                 prices_data.append(price)
@@ -157,7 +160,8 @@ class TibberPricingSensor(Entity):
         self._type: str = self.entity_description.key
         self._name: str = str(self.entity_description.name)
         self._attr_icon: str = self.entity_description.icon or "mdi:currency-eur"
-        self._attr_name: str = self._default_name + " " + (self._name if self._name else "")
+        self._attr_name: str = self._default_name + \
+            " " + (self._name if self._name else "")
         self._attr_unique_id: str = f"{self._default_name} {self._type}"
         self._local_timezone = ZoneInfo(self._time_zone)
 
@@ -208,12 +212,12 @@ class TibberPricingSensor(Entity):
         lowest_price: Optional[float] = None
         highest_price_timestamp: str = ""
         lowest_price_timestamp: str = ""
-        now = datetime.now(self._local_timezone)
+        now = datetime.now(self._local_timezone) + timedelta(hours=1)
 
         # This hour price including taxes
         if self._type == "current_price":
             # Get the current time with the local timezone
-            timestamp: str = now.strftime("%Y-%m-%d %H:00:00+02:00")
+            timestamp: str = now.strftime("%Y-%m-%d %H:00:00")
 
             # Find the matching entry
             matching_entry: Optional[dict[str, Any]] = None
@@ -231,7 +235,7 @@ class TibberPricingSensor(Entity):
             one_hour_later = now + timedelta(hours=1)
 
             # Format the result as a string
-            timestamp = one_hour_later.strftime("%Y-%m-%d %H:00:00+02:00")
+            timestamp = one_hour_later.strftime("%Y-%m-%d %H:00:00")
 
             # Find the matching entry
             matching_entry = None
