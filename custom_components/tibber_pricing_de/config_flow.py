@@ -1,3 +1,5 @@
+"""Config flow for Tibber Pricing DE integration."""
+
 import logging
 from typing import Any, Optional
 
@@ -13,6 +15,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class TibberPricingConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Handle a Tibber Pricing DE config flow."""
+
     VERSION = 2
 
     async def async_step_user(
@@ -26,12 +30,12 @@ class TibberPricingConfigFlow(ConfigFlow, domain=DOMAIN):
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, timeout=5)
             _LOGGER.debug("Response status from the Tibber API: %s", response.status_code)
-        except httpx.RequestError:
-            _LOGGER.error("Cannot connect to the Tibber API")
-            return self.async_show_form(step_id="user", errors={"base": "cannot_connect"})
         except httpx.TimeoutException:
             _LOGGER.error("Timeout occurred while trying to connect to the Tibber API")
             return self.async_show_form(step_id="user", errors={"base": "timeout"})
+        except httpx.RequestError:
+            _LOGGER.error("Cannot connect to the Tibber API")
+            return self.async_show_form(step_id="user", errors={"base": "cannot_connect"})
         except Exception as err:
             _LOGGER.error(
                 "Unknown error occurred while downloading data from the Tibber API: %s", err
@@ -41,6 +45,7 @@ class TibberPricingConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(title=user_input[CONF_NAME], data=user_input)
 
     def _get_data_schema(self) -> vol.Schema:
+        """Return the data schema for the config flow."""
         return vol.Schema(
             {
                 vol.Required(CONF_NAME, default="Tibber Pricing DE"): str,

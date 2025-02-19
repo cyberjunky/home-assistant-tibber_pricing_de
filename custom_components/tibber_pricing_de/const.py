@@ -1,3 +1,5 @@
+"""Constants for the Tibber Pricing DE integration."""
+
 from typing import Final
 
 from homeassistant.components.sensor import (

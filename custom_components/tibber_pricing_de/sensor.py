@@ -1,6 +1,4 @@
-"""
-Support for reading Tibber's dynamic pricing data for a German postal code.
-"""
+"""Support for Tibber Pricing sensors."""
 
 import asyncio
 from datetime import datetime, timedelta
@@ -111,7 +109,7 @@ class TibberData:
             self._data = None
             return
 
-        """Parse the Tibber API data."""
+        # Parse the Tibber API data.
         try:
             for pricing in json_data["energy"]["todayHours"]:
                 _LOGGER.debug(
@@ -164,6 +162,7 @@ class TibberPricingSensor(Entity):
         self._local_timezone = ZoneInfo(self._time_zone)
 
         self._discovery = False
+        self._pricing_data: Optional[dict[str, Any]] = None
 
     @property
     def state(self) -> Optional[Any]:
@@ -202,7 +201,7 @@ class TibberPricingSensor(Entity):
         """Get the latest data and use it to update our sensor state."""
 
         await self._data.async_update()
-        self._pricing_data: Optional[dict[str, Any]] = self._data.latest_data
+        self._pricing_data = self._data.latest_data
 
         # Initialize variables
         highest_price: Optional[float] = None
@@ -211,7 +210,7 @@ class TibberPricingSensor(Entity):
         lowest_price_timestamp: str = ""
         now = datetime.now(self._local_timezone)
 
-        """This hour price including taxes."""
+        # This hour price including taxes
         if self._type == "current_price":
             # Get the current time with the local timezone
             timestamp: str = now.strftime("%Y-%m-%d %H:00:00+02:00")
@@ -226,7 +225,7 @@ class TibberPricingSensor(Entity):
 
             self._state = matching_entry["price"] if matching_entry else None
 
-        """Next hour price including taxes."""
+        # Next hour price including taxes
         if self._type == "next_hour_price":
             # Get the current time with the local timezone
             one_hour_later = now + timedelta(hours=1)
@@ -244,7 +243,7 @@ class TibberPricingSensor(Entity):
 
             self._state = matching_entry["price"] if matching_entry else None
 
-        """Highest price today including taxes."""
+        # Highest price today including taxes
         if self._type == "highest_price_today":
             if self._pricing_data:
                 for price_data in self._pricing_data["prices"]:
@@ -303,4 +302,4 @@ class TibberPricingSensor(Entity):
 
                 self._state = lowest_price_timestamp
 
-        _LOGGER.debug(f"Device: {self._attr_name} State: {self._state}")
+        _LOGGER.debug("Device: %s State: %s", self._attr_name, self._state)
