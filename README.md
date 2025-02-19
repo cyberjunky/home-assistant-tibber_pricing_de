@@ -77,7 +77,8 @@ views:
           - id: Prijs
             decimals: 4
 ```
-<img width="377" alt="image" src="https://github.com/user-attachments/assets/ca7b8bc7-b9f3-4bb0-aabb-55017e562337" />
+<img width="374" alt="image" src="https://github.com/user-attachments/assets/1fb98c13-0751-4fe6-b977-93b9e79c2fb0" />
+
 
 ## Debugging
 
