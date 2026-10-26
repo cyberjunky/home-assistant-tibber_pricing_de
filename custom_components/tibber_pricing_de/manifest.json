@@ -9,6 +9,6 @@
     "documentation": "https://github.com/cyberjunky/home-assistant-tibber_pricing_de",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/cyberjunky/home-assistant-tibber_pricing_de/issues",
-    "requirements": ["httpx"],
+    "requirements": [],
     "version": "1.0.0"
   }
