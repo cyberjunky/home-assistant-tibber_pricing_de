@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Gib die Postleitzahl ein, für die die dynamischen Strompreise von Tibber abgerufen werden sollen. Ein Tibber-Konto ist nicht nötig.",
+        "data": {
+          "postalcode": "Postleitzahl"
+        },
+        "data_description": {
+          "postalcode": "Fünfstellige deutsche Postleitzahl. Netzentgelte und Abgaben hängen davon ab."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zur Tibber-API fehlgeschlagen.",
+      "invalid_postalcode": "Gib eine fünfstellige deutsche Postleitzahl ein.",
+      "invalid_response": "Die Tibber-API hat unerwartete Daten geliefert.",
+      "unknown_postalcode": "Tibber hat keine Preise für diese Postleitzahl.",
+      "unknown": "Unerwarteter Fehler."
+    },
+    "abort": {
+      "already_configured": "Diese Postleitzahl ist bereits eingerichtet."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {
+        "name": "Aktueller Preis"
+      },
+      "next_hour_price": {
+        "name": "Preis nächste Stunde"
+      },
+      "highest_price_today": {
+        "name": "Höchster Preis heute"
+      },
+      "highest_price_today_hour": {
+        "name": "Stunde höchster Preis heute"
+      },
+      "lowest_price_today": {
+        "name": "Niedrigster Preis heute"
+      },
+      "lowest_price_today_hour": {
+        "name": "Stunde niedrigster Preis heute"
+      }
+    }
+  }
+}
