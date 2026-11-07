@@ -4,8 +4,9 @@ outputdata
 settings.json
 
 # Translation files
-custom_components/tibber_pricing_de/translations
+custom_components/tibber_pricing_de/translations/*
 !custom_components/tibber_pricing_de/translations/en.json
+!custom_components/tibber_pricing_de/translations/de.json
 
 # Home Assistant configuration
 config
