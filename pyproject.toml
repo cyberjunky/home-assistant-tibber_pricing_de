@@ -7,8 +7,10 @@ known_first_party = ["custom_components"]
 combine_as_imports = true
 
 [tool.pytest.ini_options]
+addopts = "-p no:respx -rxf -l --cov=./ --cov-report=xml"
+testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-rxf -l --cov=./ --cov-report=xml"
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore:It is recommended to use web.AppKey instances for keys",
