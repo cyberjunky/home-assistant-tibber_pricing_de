@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import voluptuous as vol
+import probatio
 
 from .api import (
     TibberConnectionError,
@@ -21,7 +21,7 @@ from .const import CONF_POSTALCODE, DEFAULT_NAME, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 POSTALCODE_PATTERN = re.compile(r"\d{5}")
-DATA_SCHEMA = vol.Schema({vol.Required(CONF_POSTALCODE): str})
+DATA_SCHEMA = probatio.Schema({probatio.Required(CONF_POSTALCODE): str})
 
 
 class TibberPricingConfigFlow(ConfigFlow, domain=DOMAIN):

@@ -40,12 +40,22 @@ def _today(data: TibberPrices, now: datetime) -> list[PriceSlot]:
     return data.slots_on(dt_util.as_local(now).date())
 
 
+def _price(slot: PriceSlot) -> float:
+    return slot.price
+
+
+def _start(slot: PriceSlot) -> datetime:
+    return slot.start
+
+
 def _highest_today(data: TibberPrices, now: datetime) -> PriceSlot | None:
-    return max(_today(data, now), key=lambda slot: slot.price, default=None)
+    slots = _today(data, now)
+    return max(slots, key=_price) if slots else None
 
 
 def _lowest_today(data: TibberPrices, now: datetime) -> PriceSlot | None:
-    return min(_today(data, now), key=lambda slot: slot.price, default=None)
+    slots = _today(data, now)
+    return min(slots, key=_price) if slots else None
 
 
 def _price_list(slots: list[PriceSlot]) -> list[dict[str, Any]]:
@@ -72,14 +82,6 @@ class TibberPricingSensorEntityDescription(SensorEntityDescription):
     slot_fn: Callable[[TibberPrices, datetime], PriceSlot | None]
     value_fn: Callable[[PriceSlot], float | datetime]
     attributes_fn: Callable[[TibberPrices, datetime], dict[str, Any]] | None = None
-
-
-def _price(slot: PriceSlot) -> float:
-    return slot.price
-
-
-def _start(slot: PriceSlot) -> datetime:
-    return slot.start
 
 
 SENSOR_TYPES: tuple[TibberPricingSensorEntityDescription, ...] = (

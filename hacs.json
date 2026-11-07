@@ -1,6 +1,6 @@
 {
   "hide_default_branch": true,
-  "homeassistant": "2025.2.0",
+  "homeassistant": "2026.9.0",
   "name": "Tibber Pricing DE",
   "render_readme": true
 }
