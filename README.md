@@ -18,7 +18,7 @@ Get Tibber dynamic pricing information in home-assistant (Germany only, no accou
 - Search for 'Tibber Pricing DE' in HACS.
 - Click the Download button at the bottom of the page of the found integration.
 - Restart Home Assistant.
-- Under Services -> Devices & services click the Add Integration button, search for 'Tibber Pricing DE'.
+- Under Settings -> Devices & services click the Add Integration button, search for 'Tibber Pricing DE'.
 - Configure the integration using the instructions below.
 
 ### Manual - Without HACS
@@ -27,26 +27,37 @@ Get Tibber dynamic pricing information in home-assistant (Germany only, no accou
 - Restart Home-Assistant.
 - Add the integration and configure it using the instructions below
 
-## Configuration Flow
+## Configuration
 
-This component supports a configuration flow that allows you to set up the sensor through the Home Assistant UI. You will be prompted to enter the name and postal code during the setup process.
+Add the integration from **Settings -> Devices & services** and enter your five-digit German postal code. The postal code is validated against the Tibber API; each postal code can be added once.
 
-## Usage
+## Sensors
 
-Once configured, the sensor will provide the following data:
+Prices are in EUR/kWh including VAT, taxes and grid fees for your postal code. Each entry creates a service device with these sensors:
 
-- Current Price
-- Next Hour Price
-- Highest Price Today
-- Lowest Price Today
-- Timestamps for the highest and lowest prices today
+| Sensor | State |
+|---|---|
+| Current price | Price for the current hour |
+| Next hour price | Price for the next hour (after 23:00 this needs tomorrow's prices, published around 13:00) |
+| Highest price today | Highest hourly price today |
+| Highest price today hour | Start of the most expensive hour today (timestamp) |
+| Lowest price today | Lowest hourly price today |
+| Lowest price today hour | Start of the cheapest hour today (timestamp) |
 
-You can view these values in the Home Assistant dashboard.
+Every sensor has a `price_components` attribute with the breakdown (power, taxes, grid) for the hour it refers to.
+The current price sensor also has:
+
+- `prices`: today's hourly prices as `{timestamp, price}`, with ISO 8601 timestamps in local time
+- `prices_tomorrow`: the same for tomorrow, empty until Tibber publishes them
+- `today`: Tibber's average price for today
+- `monthly`: the monthly fees
+
+The data is polled once an hour, and the states move on at every full hour.
 
 ## Charts
 
 Install apexcharts via HACS.
-You can define this chart to get the today price per hour.
+You can define this chart to get today's price per hour.
 ```
 views:
   - title: Home
@@ -55,15 +66,14 @@ views:
         graph_span: 24h
         span:
           start: day
-          offset: '-1h'
         now:
           show: true
           label: Now
         header:
           show: true
-          title: Stroomprijs vandaag (€/kWh)
+          title: Strompreis heute (EUR/kWh)
         series:
-          - entity: sensor.your_sensor_current_price
+          - entity: sensor.tibber_pricing_de_10115_current_price
             stroke_width: 2
             float_precision: 4
             type: column
@@ -74,7 +84,7 @@ views:
                 return [record.timestamp, record.price];
               });
         yaxis:
-          - id: Prijs
+          - id: Preis
             decimals: 4
 ```
 <img width="374" alt="image" src="https://github.com/user-attachments/assets/1fb98c13-0751-4fe6-b977-93b9e79c2fb0" />

@@ -1,74 +1,21 @@
 """Constants for the Tibber Pricing DE integration."""
 
+from datetime import timedelta
 from typing import Final
 
-from homeassistant.components.sensor import (
-    PLATFORM_SCHEMA,
-    SensorDeviceClass,
-    SensorEntityDescription,
-    SensorStateClass,
-)
-from homeassistant.const import CONF_NAME, Platform
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
+from homeassistant.const import Platform
 
-DOMAIN = "tibber_pricing_de"
-CONF_POSTALCODE = "postalcode"
-DEFAULT_NAME = "Tibber Pricing DE"
-TIBBER_API_URL = "https://tibber.com/de/api/lookup/price-overview?postalCode={0}"
+DOMAIN: Final = "tibber_pricing_de"
+PLATFORMS: Final = [Platform.SENSOR]
 
-SENSOR_PREFIX = "Tibber Pricing DE"
+CONF_POSTALCODE: Final = "postalcode"
+DEFAULT_NAME: Final = "Tibber Pricing DE"
 
-PLATFORMS = [
-    Platform.SENSOR,
-]
+TIBBER_API_URL: Final = "https://tibber.com/de/api/lookup/price-overview?postalCode={0}"
+# The price-overview endpoint reports dates and hours in German local time.
+TIBBER_TIME_ZONE: Final = "Europe/Berlin"
+REQUEST_TIMEOUT: Final = 10
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Optional(CONF_NAME, default=SENSOR_PREFIX): cv.string,
-        vol.Required(CONF_POSTALCODE): cv.string,
-    }
-)
-
-SENSOR_TYPES: Final[tuple[SensorEntityDescription, ...]] = (
-    SensorEntityDescription(
-        key="current_price",
-        name="Current Price",
-        icon="mdi:currency-eur",
-        state_class=SensorStateClass.MEASUREMENT,
-        device_class=SensorDeviceClass.MONETARY,
-    ),
-    SensorEntityDescription(
-        key="next_hour_price",
-        name="Next Hour Price",
-        icon="mdi:chevron-right",
-        state_class=SensorStateClass.MEASUREMENT,
-        device_class=SensorDeviceClass.MONETARY,
-    ),
-    SensorEntityDescription(
-        key="highest_price_today",
-        name="Highest Price Today",
-        icon="mdi:gauge-full",
-        state_class=SensorStateClass.MEASUREMENT,
-        device_class=SensorDeviceClass.MONETARY,
-    ),
-    SensorEntityDescription(
-        key="highest_price_today_hour",
-        name="Highest Price Today Hour",
-        icon="mdi:calendar-clock-outline",
-        state_class=SensorDeviceClass.TIMESTAMP,
-    ),
-    SensorEntityDescription(
-        key="lowest_price_today",
-        name="Lowest Price Today",
-        icon="mdi:gauge-empty",
-        state_class=SensorStateClass.MEASUREMENT,
-        device_class=SensorDeviceClass.MONETARY,
-    ),
-    SensorEntityDescription(
-        key="lowest_price_today_hour",
-        name="Lowest Price Today Hour",
-        icon="mdi:calendar-clock-outline",
-        state_class=SensorDeviceClass.TIMESTAMP,
-    ),
-)
+# Day-ahead prices for tomorrow are published around 13:00, so hourly polling
+# picks them up in time while keeping the request rate low.
+UPDATE_INTERVAL: Final = timedelta(hours=1)

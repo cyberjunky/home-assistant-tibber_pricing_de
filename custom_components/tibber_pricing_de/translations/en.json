@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Enter the German postal code to fetch Tibber's dynamic electricity prices for. No Tibber account is needed.",
+        "data": {
+          "postalcode": "Postal code"
+        },
+        "data_description": {
+          "postalcode": "Five-digit German postal code (Postleitzahl). Grid fees and taxes depend on it."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the Tibber API.",
+      "invalid_postalcode": "Enter a five-digit German postal code.",
+      "invalid_response": "The Tibber API returned unexpected data.",
+      "unknown_postalcode": "Tibber has no prices for this postal code.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This postal code is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {
+        "name": "Current price"
+      },
+      "next_hour_price": {
+        "name": "Next hour price"
+      },
+      "highest_price_today": {
+        "name": "Highest price today"
+      },
+      "highest_price_today_hour": {
+        "name": "Highest price today hour"
+      },
+      "lowest_price_today": {
+        "name": "Lowest price today"
+      },
+      "lowest_price_today_hour": {
+        "name": "Lowest price today hour"
+      }
+    }
+  }
+}

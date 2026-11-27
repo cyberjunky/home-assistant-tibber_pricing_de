@@ -2,14 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Generator
-import sys
-import types
 from typing import Any
-from unittest.mock import patch
 
-from homeassistant.const import CONF_NAME
 import pytest
 from pytest_homeassistant.common import MockConfigEntry
 from pytest_homeassistant.test_util.aiohttp import AiohttpClientMocker
@@ -21,29 +15,41 @@ from custom_components.tibber_pricing_de.const import (
 )
 
 POSTALCODE = "10115"
-NAME = "Tibber Pricing DE"
+TITLE = "Tibber Pricing DE 10115"
 URL = TIBBER_API_URL.format(POSTALCODE)
 TODAY = "2026-11-07"
+TOMORROW = "2026-11-08"
 # 11:30 local time in Europe/Berlin (CET, UTC+1)
 FROZEN_TIME = "2026-11-07 10:30:00+00:00"
 
 
-def mock_api_data() -> dict[str, Any]:
-    """Return a Tibber price-overview payload with 24 hourly prices for TODAY."""
-    return {
-        "energy": {
-            "todayHours": [
-                {
-                    "hour": hour,
-                    "date": TODAY,
-                    "priceIncludingVat": round(0.20 + hour / 100, 2),
-                    "priceComponents": [{"type": "grid", "priceIncludingVat": 0.1}],
-                }
-                for hour in range(24)
+def _hours(day: str, base: float) -> list[dict[str, Any]]:
+    return [
+        {
+            "hour": hour,
+            "date": day,
+            "priceExcludingVat": round((base + hour / 100) / 1.19, 4),
+            "priceIncludingVat": round(base + hour / 100, 2),
+            "priceComponents": [
+                {"type": "power", "priceIncludingVat": round(base - 0.1 + hour / 100, 2)},
+                {"type": "grid", "priceIncludingVat": 0.1},
             ],
-            "today": {"min": 0.20, "max": 0.43},
+        }
+        for hour in range(24)
+    ]
+
+
+def mock_api_data(*, tomorrow: bool = True) -> dict[str, Any]:
+    """Return a price-overview payload: today 0.20..0.43, tomorrow 0.10..0.33 EUR/kWh."""
+    return {
+        "priceArea": "DE",
+        "currency": "EUR",
+        "energy": {
+            "todayHours": _hours(TODAY, 0.20),
+            "tomorrowHours": _hours(TOMORROW, 0.10) if tomorrow else [],
+            "today": {"priceIncludingVat": 0.315},
         },
-        "monthlyFees": {"baseFee": 5.99},
+        "monthlyFees": {"priceIncludingVat": 10.22},
     }
 
 
@@ -53,34 +59,14 @@ def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
 
 
 @pytest.fixture
-def async_timeout_shim() -> Generator[None]:
-    """Provide a stand-in ``async_timeout`` module if it is not installed.
-
-    ``sensor.py`` imports the third-party ``async_timeout`` package, which
-    Home Assistant no longer installs. Without it the config entry fails to
-    set up. This shim lets the sensor logic be tested until the import is
-    replaced by ``asyncio.timeout``; ``test_init.test_sensor_module_imports``
-    tracks the bug.
-    """
-    try:
-        import async_timeout  # noqa: F401
-    except ModuleNotFoundError:
-        shim = types.ModuleType("async_timeout")
-        shim.timeout = asyncio.timeout  # type: ignore[attr-defined]
-        with patch.dict(sys.modules, {"async_timeout": shim}):
-            yield
-        return
-    yield
-
-
-@pytest.fixture
 def mock_config_entry() -> MockConfigEntry:
     """Return a config entry for one postal code."""
     return MockConfigEntry(
         domain=DOMAIN,
-        title=NAME,
-        version=2,
-        data={CONF_NAME: NAME, CONF_POSTALCODE: POSTALCODE},
+        title=TITLE,
+        version=3,
+        unique_id=POSTALCODE,
+        data={CONF_POSTALCODE: POSTALCODE},
         entry_id="test_entry_id",
     )
 
