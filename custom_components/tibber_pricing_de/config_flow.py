@@ -1,54 +1,64 @@
-"""Config flow for Tibber Pricing DE integration."""
+"""Config flow for the Tibber Pricing DE integration."""
+
+from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+import re
+from typing import Any
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_NAME
-from homeassistant.helpers import config_validation as cv
-import httpx
-import voluptuous as vol
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import probatio
 
-from .const import CONF_POSTALCODE, DOMAIN, TIBBER_API_URL
+from .api import (
+    TibberConnectionError,
+    TibberInvalidResponseError,
+    TibberPostalCodeError,
+    async_get_prices,
+)
+from .const import CONF_POSTALCODE, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+POSTALCODE_PATTERN = re.compile(r"\d{5}")
+DATA_SCHEMA = probatio.Schema({probatio.Required(CONF_POSTALCODE): str})
 
 
 class TibberPricingConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a Tibber Pricing DE config flow."""
 
-    VERSION = 2
+    VERSION = 3
 
-    async def async_step_user(
-        self, user_input: Optional[dict[str, Any]] = None
-    ) -> ConfigFlowResult:
-        if user_input is None:
-            return self.async_show_form(step_id="user", data_schema=self._get_data_schema())
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Ask for the postal code and validate it against the Tibber API."""
+        errors: dict[str, str] = {}
 
-        try:
-            url: str = TIBBER_API_URL.format(user_input[CONF_POSTALCODE])
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, timeout=5)
-            _LOGGER.debug("Response status from the Tibber API: %s", response.status_code)
-        except httpx.TimeoutException:
-            _LOGGER.error("Timeout occurred while trying to connect to the Tibber API")
-            return self.async_show_form(step_id="user", errors={"base": "timeout"})
-        except httpx.RequestError:
-            _LOGGER.error("Cannot connect to the Tibber API")
-            return self.async_show_form(step_id="user", errors={"base": "cannot_connect"})
-        except Exception as err:
-            _LOGGER.error(
-                "Unknown error occurred while downloading data from the Tibber API: %s", err
-            )
-            return self.async_show_form(step_id="user", errors={"base": "unknown"})
+        if user_input is not None:
+            postalcode = user_input[CONF_POSTALCODE].strip()
+            if not POSTALCODE_PATTERN.fullmatch(postalcode):
+                errors[CONF_POSTALCODE] = "invalid_postalcode"
+            else:
+                await self.async_set_unique_id(postalcode)
+                self._abort_if_unique_id_configured()
+                try:
+                    await async_get_prices(async_get_clientsession(self.hass), postalcode)
+                except TibberPostalCodeError:
+                    errors[CONF_POSTALCODE] = "unknown_postalcode"
+                except TibberConnectionError:
+                    errors["base"] = "cannot_connect"
+                except TibberInvalidResponseError:
+                    errors["base"] = "invalid_response"
+                except Exception:
+                    _LOGGER.exception("Unexpected error while validating the postal code")
+                    errors["base"] = "unknown"
+                else:
+                    return self.async_create_entry(
+                        title=f"{DEFAULT_NAME} {postalcode}",
+                        data={CONF_POSTALCODE: postalcode},
+                    )
 
-        return self.async_create_entry(title=user_input[CONF_NAME], data=user_input)
-
-    def _get_data_schema(self) -> vol.Schema:
-        """Return the data schema for the config flow."""
-        return vol.Schema(
-            {
-                vol.Required(CONF_NAME, default="Tibber Pricing DE"): str,
-                vol.Required(CONF_POSTALCODE): cv.string,
-            }
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(DATA_SCHEMA, user_input),
+            errors=errors,
         )

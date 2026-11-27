@@ -1,0 +1,24 @@
+{
+  "entity": {
+    "sensor": {
+      "current_price": {
+        "default": "mdi:currency-eur"
+      },
+      "next_hour_price": {
+        "default": "mdi:chevron-right"
+      },
+      "highest_price_today": {
+        "default": "mdi:gauge-full"
+      },
+      "highest_price_today_hour": {
+        "default": "mdi:calendar-clock-outline"
+      },
+      "lowest_price_today": {
+        "default": "mdi:gauge-empty"
+      },
+      "lowest_price_today_hour": {
+        "default": "mdi:calendar-clock-outline"
+      }
+    }
+  }
+}

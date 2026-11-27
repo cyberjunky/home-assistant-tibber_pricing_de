@@ -7,8 +7,10 @@ known_first_party = ["custom_components"]
 combine_as_imports = true
 
 [tool.pytest.ini_options]
+addopts = "-p no:respx -rxf -l --cov=custom_components.tibber_pricing_de --cov-report=xml"
+testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-rxf -l --cov=./ --cov-report=xml"
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore:It is recommended to use web.AppKey instances for keys",
@@ -24,13 +26,12 @@ line-length = 100
 show-fixes = true
 target-version = "py312"
 
-[tool.lint]
+[tool.ruff.lint]
 select = ["ALL"]
 ignore = [
     "ANN001",
     "ANN002",
     "ANN003",
-    "ANN101",
     "ANN201",
     "ANN202",
     "ANN204",
@@ -102,9 +103,9 @@ ignore = [
     "SIM114",
     "SIM117",
     "SLF001",
-    "TCH001",
-    "TCH002",
-    "TCH003",
+    "TC001",
+    "TC002",
+    "TC003",
     "TID252",
     "TRY003",
     "TRY201",
@@ -117,3 +118,6 @@ ignore = [
 
 fixable = ["ALL"]
 unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
